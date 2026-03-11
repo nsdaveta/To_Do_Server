@@ -1,0 +1,299 @@
+const todos = require('../models/todomodel.js');
+const User = require('../models/userModel.js');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+
+// Configure Nodemailer
+const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+        user: process.env.EMAIL_USER, // Ensure these are in your .env file
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+const Register = async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        let user;
+        const existingUser = await User.findOne({ email });
+        
+        if (existingUser) {
+            if (existingUser.isVerified) {
+                return res.status(400).json({ message: "User already exists and is verified. Please log in." });
+            }
+            // If unverified, update the existing record with new details and a new OTP
+            existingUser.username = username;
+            existingUser.password = hashedPassword;
+            existingUser.otp = otp;
+            user = await existingUser.save();
+        } else {
+            user = new User({
+                username,
+                email,
+                password: hashedPassword,
+                otp,
+                isVerified: false
+            });
+            await user.save();
+        }
+
+        console.log(`[DEV ONLY] OTP for ${email}: ${otp}`);
+
+        const mailOptions = {
+            from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: 'Verify your email',
+            text: `Your OTP for verification is: ${otp}`
+        };
+
+        // Await the email sending process to ensure it completes
+        await transporter.sendMail(mailOptions);
+
+        res.status(201).json({ message: "Registration successful. Please verify your email." });
+    } catch (error) {
+        console.error("Error during registration:", error.message);
+        let errorMessage = "Failed to send verification email. Please try again later.";
+        if (error.code === 'EAUTH') {
+            errorMessage = "Authentication failed. Please check your email credentials in the .env file.";
+        } else if (error.code === 'ECONNECTION') {
+            errorMessage = "Connection error. Could not connect to the email server.";
+        } else if (error.responseCode === 550) {
+            errorMessage = "Recipient email address not found or rejected.";
+        }
+        res.status(500).json({ message: errorMessage });
+    }
+};
+
+const VerifyOTP = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+
+        if (user.otp !== otp) {
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
+
+        user.isVerified = true;
+        user.otp = undefined;
+        await user.save();
+
+        res.json({ message: "Email verified successfully." });
+    } catch (error) {
+        res.status(500).json({ message: error.message || "An internal server error occurred." });
+    }
+};
+
+const ResendOTP = async (req, res) => {
+    try {
+        const { email, source } = req.body; // `source` can be 'login' when triggered from login verify button
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+
+        if (user.isVerified) {
+            return res.status(400).json({ message: "User is already verified" });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        user.otp = otp;
+        await user.save();
+
+        console.log(`[DEV ONLY] ${source === 'login' ? 'Sent' : 'Resent'} OTP for ${email}: ${otp}`);
+
+        // choose wording based on where the request came from
+        const mailOptions = {
+            from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: source === 'login' ? 'Verify your email' : 'Resent OTP - Verify your email',
+            text: source === 'login'
+                ? `Your OTP for verification is: ${otp}`
+                : `Your new OTP for verification is: ${otp}`
+        };
+
+        // Await the email sending process to ensure it completes
+        await transporter.sendMail(mailOptions);
+        res.json({ message: "OTP sent successfully. Please check your email (or console during dev)." });
+    } catch (error) {
+        console.error("Error resending OTP:", error.message);
+        let errorMessage = "Failed to resend OTP. Please try again later."
+        if (error.code === 'EAUTH') {
+            errorMessage = "Authentication failed. Please check your email credentials in the .env file.";
+        } else if (error.code === 'ECONNECTION') {
+            errorMessage = "Connection error. Could not connect to the email server.";
+        } else if (error.responseCode === 550) {
+            errorMessage = "Recipient email address not found or rejected.";
+        }
+        res.status(500).json({ message: errorMessage });
+    }
+};
+
+const CheckUserStatus = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({ isVerified: user.isVerified });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const Login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+
+        if (!user.isVerified) {
+            return res.status(400).json({ message: "Please verify your email first" });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
+
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '1h' });
+        res.json({ token, user: { id: user._id, email: user.email, username: user.username } });
+    } catch (error) {
+        res.status(500).json({ message: error.message || "An internal server error occurred." });
+    }
+};
+
+const Logout = async (req, res) => {
+    try {
+        res.status(200).json({ message: "Logged out successfully" });
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+};
+
+const ToDo=async(req,res)=>
+{
+    try {
+        const todoList= await todos.find({ user_id: req.user });
+        res.send(todoList);
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+}
+const Add_ToDo=async(req,res)=>
+{
+    try {
+        const {title}=req.body
+        const Added_ToDo=await todos.create({title, user_id: req.user})
+        res.send(Added_ToDo);
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+
+}
+const Update_ToDo=async(req,res)=>
+{
+    try {
+        const data=req.body;
+        const id=req.params.id;
+        const Updated_ToDo=await todos.findOneAndUpdate({ _id: id, user_id: req.user },data,{new:true})
+        res.send(Updated_ToDo);
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+}
+
+
+const Delete_ToDo=async (req,res)=> 
+{
+    try {
+        const id=req.params.id;
+        const Deleted_ToDo=await todos.findOneAndDelete({ _id: id, user_id: req.user });
+        res.send(Deleted_ToDo)
+    } catch (error) {
+        res.status(500).send(error.message);
+    } 
+}
+
+const ForgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        user.otp = otp;
+        await user.save();
+
+        console.log(`[DEV ONLY] Forgot Password OTP for ${email}: ${otp}`);
+
+        const mailOptions = {
+            from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: 'Password Reset OTP',
+            text: `Your OTP for password reset is: ${otp}`
+        };
+
+        await transporter.sendMail(mailOptions);
+        res.json({ message: "Password reset OTP sent to your email." });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const ResetPassword = async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (user.otp !== otp) {
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
+
+        const isSamePassword = await bcrypt.compare(newPassword, user.password);
+        if (isSamePassword) {
+            return res.status(400).json({ message: "New password cannot be the same as the old password." });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        user.password = hashedPassword;
+        user.otp = undefined;
+        await user.save();
+
+        res.json({ message: "Password reset successful. You can now login." });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+
+
+module.exports={ToDo,Add_ToDo,Update_ToDo,Delete_ToDo, Register, VerifyOTP, ResendOTP, Login, Logout, ForgotPassword, ResetPassword, CheckUserStatus}
