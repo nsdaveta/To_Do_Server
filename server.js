@@ -11,15 +11,6 @@ app.use(cors());
 
 app.use('/todos',TodoRouter)
 
-if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, '../client/dist')));
-    
-    // Use this regex for Express 5 catch-all
-    app.get(/^(?!\/todos).+/, (req, res) => {
-        res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
-    });
-}
-
 const PORT = process.env.PORT || 4000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/todos';
 
