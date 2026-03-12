@@ -13,9 +13,11 @@ app.use('/todos',TodoRouter)
 
 if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, '../client/dist')));
-    app.get('/:path*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
-});
+    
+    // Use this regex for Express 5 catch-all
+    app.get(/^(?!\/todos).+/, (req, res) => {
+        res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
+    });
 }
 
 const PORT = process.env.PORT || 4000;
