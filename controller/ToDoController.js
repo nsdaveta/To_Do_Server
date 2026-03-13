@@ -66,6 +66,7 @@ const Register = async (req, res) => {
             const field = Object.keys(error.keyPattern || {})[0] || 'field';
             return res.status(400).json({ message: `That ${field} is already taken. Please choose a different one.` });
         }
+        let errorMessage = "Failed to send verification email. Please try again later.";
         if (error.code === 'EAUTH') {
             errorMessage = "Authentication failed. Please check your email credentials in the .env file.";
         } else if (error.code === 'ECONNECTION') {
