@@ -61,6 +61,11 @@ const Register = async (req, res) => {
         res.status(201).json({ message: "Registration successful. Please verify your email." });
     } catch (error) {
         console.error("Error during registration:", error.message);
+        // Handle MongoDB duplicate key error (e.g. username already taken)
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern || {})[0] || 'field';
+            return res.status(400).json({ message: `That ${field} is already taken. Please choose a different one.` });
+        }
         let errorMessage = "Failed to send verification email. Please try again later.";
         if (error.code === 'EAUTH') {
             errorMessage = "Authentication failed. Please check your email credentials in the .env file.";
