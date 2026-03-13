@@ -14,5 +14,15 @@ app.use('/todos',TodoRouter)
 const PORT = process.env.PORT || 4000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/todos';
 
- mongoose.connect(MONGO_URI, {tls : true}).then(() => console.log("Connected To Database"));
+const connectionOptions = {
+  tls: true,
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+};
+
+mongoose.connect(process.env.MONGO_URI, connectionOptions)
+  .then(() => console.log("✅ Connected To Database"))
+  .catch((err) => {
+    console.error("❌ Database connection error:", err.message);
+    console.error("Full error details:", err);
+  });
  app.listen(PORT, () => {console.log(`Server is listening on port ${PORT}`);});
