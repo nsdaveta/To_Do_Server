@@ -6,18 +6,30 @@ const nodemailer = require('nodemailer');
 
 // Configure Nodemailer
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    service: 'gmail', // Using 'service' is more reliable for Gmail
     auth: {
-        user: process.env.EMAIL_USER, // Ensure these are in your .env file
+        user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
+    }
+});
+
+// Verify connection configuration
+transporter.verify((error, success) => {
+    if (error) {
+        console.error("❌ Nodemailer verification failed:", error.message);
+    } else {
+        console.log("✅ Server is ready to take our messages");
     }
 });
 
 const Register = async (req, res) => {
     try {
         const { username, email, password } = req.body;
+
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            console.error("Email credentials missing in .env file");
+            return res.status(500).json({ message: "Server configuration error: Email credentials missing." });
+        }
 
         if (!username || !email || !password) {
             return res.status(400).json({ message: "All fields (username, email, password) are required." });
@@ -63,13 +75,13 @@ const Register = async (req, res) => {
         // Await the email sending process to ensure it completes
         try {
             await transporter.sendMail(mailOptions);
+            console.log(`✅ Verification email sent to ${normalizedEmail}`);
         } catch (mailError) {
-            console.error("Email sending error:", mailError.message);
-            // We don't return here because the user is already created/updated in the DB
-            // However, we should inform the user that the email failed
+            console.error("❌ Email sending error details:", mailError);
             return res.status(500).json({ 
-                message: "User created but failed to send verification email. Please try resending OTP.",
-                email: normalizedEmail 
+                message: "User created but failed to send verification email. Please ensure your email credentials are correct or try resending OTP.",
+                email: normalizedEmail,
+                error: mailError.message
             });
         }
 
@@ -137,23 +149,34 @@ const ResendOTP = async (req, res) => {
         user.otp = otp;
         await user.save();
 
-        console.log(`[DEV ONLY] ${source === 'login' ? 'Sent' : 'Resent'} OTP for ${email}: ${otp}`);
+        console.log(`[DEV ONLY] ${source === 'login' ? 'Sent' : 'Resent'} OTP for ${normalizedEmail}: ${otp}`);
 
         // choose wording based on where the request came from
         const mailOptions = {
             from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
-            to: email,
+            to: normalizedEmail,
             subject: source === 'login' ? 'Verify your email' : 'Resent OTP - Verify your email',
             text: source === 'login'
                 ? `Your OTP for verification is: ${otp}`
                 : `Your new OTP for verification is: ${otp}`
         };
 
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            console.error("Email credentials missing in .env file");
+            return res.status(500).json({ message: "Server configuration error: Email credentials missing." });
+        }
+
         // Await the email sending process to ensure it completes
-        await transporter.sendMail(mailOptions);
-        res.json({ message: "OTP sent successfully. Please check your email (or console during dev)." });
+        try {
+            await transporter.sendMail(mailOptions);
+            console.log(`✅ OTP ${source === 'login' ? 'sent' : 'resent'} to ${normalizedEmail}`);
+            res.json({ message: "OTP sent successfully. Please check your email (or console during dev)." });
+        } catch (mailError) {
+            console.error("❌ Error sending email:", mailError);
+            throw mailError; // Let the outer catch handle and format the error response
+        }
     } catch (error) {
-        console.error("Error resending OTP:", error.message);
+        console.error("Error resending OTP:", error);
         let errorMessage = "Failed to resend OTP. Please try again later."
         if (error.code === 'EAUTH') {
             errorMessage = "Authentication failed. Please check your email credentials in the .env file.";
@@ -286,19 +309,26 @@ const ForgotPassword = async (req, res) => {
         user.otp = otp;
         await user.save();
 
-        console.log(`[DEV ONLY] Forgot Password OTP for ${email}: ${otp}`);
+        console.log(`[DEV ONLY] Forgot Password OTP for ${normalizedEmail}: ${otp}`);
 
         const mailOptions = {
             from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
-            to: email,
+            to: normalizedEmail,
             subject: 'Password Reset OTP',
             text: `Your OTP for password reset is: ${otp}`
         };
 
-        await transporter.sendMail(mailOptions);
-        res.json({ message: "Password reset OTP sent to your email." });
+        try {
+            await transporter.sendMail(mailOptions);
+            console.log(`✅ Password reset OTP sent to ${normalizedEmail}`);
+            res.json({ message: "Password reset OTP sent to your email." });
+        } catch (mailError) {
+            console.error("❌ Error sending forgot password email:", mailError);
+            res.status(500).json({ message: "Failed to send password reset email. Please try again later." });
+        }
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error("Forgot password error:", error);
+        res.status(500).json({ message: error.message || "An internal server error occurred." });
     }
 };
 
