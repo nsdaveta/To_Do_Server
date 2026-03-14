@@ -9,20 +9,20 @@ console.log("Checking Email Configuration...");
 if (!process.env.EMAIL_USER) console.error("❌ EMAIL_USER is missing!");
 if (!process.env.EMAIL_PASS) console.error("❌ EMAIL_PASS is missing!");
 
-// Configure Nodemailer with full debugging enabled
+// Configure Nodemailer with service: 'gmail' and explicit timeouts
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Port 465 requires secure: true
+    service: 'gmail',
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: (process.env.EMAIL_USER || "").trim(),
+        pass: (process.env.EMAIL_PASS || "").trim()
     },
     tls: {
         rejectUnauthorized: false
     },
-    logger: true, // Output full logs to the console
-    debug: true   // Include debug information
+    connectionTimeout: 10000, // 10 seconds timeout
+    greetingTimeout: 10000,
+    logger: true,
+    debug: true
 });
 
 // Verify connection configuration immediately
