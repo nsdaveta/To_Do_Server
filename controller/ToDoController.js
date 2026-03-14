@@ -19,12 +19,17 @@ const Register = async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
+        if (!username || !email || !password) {
+            return res.status(400).json({ message: "All fields (username, email, password) are required." });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
         let user;
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({ email: normalizedEmail });
         
         if (existingUser) {
             if (existingUser.isVerified) {
@@ -38,7 +43,7 @@ const Register = async (req, res) => {
         } else {
             user = new User({
                 username,
-                email,
+                email: normalizedEmail,
                 password: hashedPassword,
                 otp,
                 isVerified: false
@@ -46,48 +51,56 @@ const Register = async (req, res) => {
             await user.save();
         }
 
-        console.log(`[DEV ONLY] OTP for ${email}: ${otp}`);
+        console.log(`[DEV ONLY] OTP for ${normalizedEmail}: ${otp}`);
 
         const mailOptions = {
             from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
-            to: email,
+            to: normalizedEmail,
             subject: 'Verify your email',
             text: `Your OTP for verification is: ${otp}`
         };
 
         // Await the email sending process to ensure it completes
-        await transporter.sendMail(mailOptions);
+        try {
+            await transporter.sendMail(mailOptions);
+        } catch (mailError) {
+            console.error("Email sending error:", mailError.message);
+            // We don't return here because the user is already created/updated in the DB
+            // However, we should inform the user that the email failed
+            return res.status(500).json({ 
+                message: "User created but failed to send verification email. Please try resending OTP.",
+                email: normalizedEmail 
+            });
+        }
 
         res.status(201).json({ message: "Registration successful. Please verify your email." });
     } catch (error) {
         console.error("Error during registration:", error.message);
         // Handle MongoDB duplicate key error (e.g. username already taken)
         if (error.code === 11000) {
-            const field = Object.keys(error.keyPattern || {})[0] || 'field';
+            const field = Object.keys(error.keyPattern || error.keyValue || {})[0] || 'field';
             return res.status(400).json({ message: `That ${field} is already taken. Please choose a different one.` });
         }
-        let errorMessage = "Failed to send verification email. Please try again later.";
-        if (error.code === 'EAUTH') {
-            errorMessage = "Authentication failed. Please check your email credentials in the .env file.";
-        } else if (error.code === 'ECONNECTION') {
-            errorMessage = "Connection error. Could not connect to the email server.";
-        } else if (error.responseCode === 550) {
-            errorMessage = "Recipient email address not found or rejected.";
-        }
-        res.status(500).json({ message: errorMessage });
+        res.status(500).json({ message: error.message || "An internal server error occurred during registration." });
     }
 };
 
 const VerifyOTP = async (req, res) => {
     try {
         const { email, otp } = req.body;
-        const user = await User.findOne({ email });
+        
+        if (!email || !otp) {
+            return res.status(400).json({ message: "Email and OTP are required" });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
 
         if (!user) {
             return res.status(400).json({ message: "User not found" });
         }
 
-        if (user.otp !== otp) {
+        if (user.otp !== String(otp).trim()) {
             return res.status(400).json({ message: "Invalid OTP" });
         }
 
@@ -104,7 +117,13 @@ const VerifyOTP = async (req, res) => {
 const ResendOTP = async (req, res) => {
     try {
         const { email, source } = req.body; // `source` can be 'login' when triggered from login verify button
-        const user = await User.findOne({ email });
+        
+        if (!email) {
+            return res.status(400).json({ message: "Email is required" });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
 
         if (!user) {
             return res.status(400).json({ message: "User not found" });
@@ -150,7 +169,12 @@ const ResendOTP = async (req, res) => {
 const CheckUserStatus = async (req, res) => {
     try {
         const { email } = req.body;
-        const user = await User.findOne({ email });
+        if (!email) {
+             return res.status(400).json({ message: "Email is required" });
+        }
+        
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -165,7 +189,12 @@ const CheckUserStatus = async (req, res) => {
 const Login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = await User.findOne({ email });
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password are required" });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
 
         if (!user) {
             return res.status(400).json({ message: "User not found" });
@@ -242,7 +271,12 @@ const Delete_ToDo=async (req,res)=>
 const ForgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
-        const user = await User.findOne({ email });
+        if (!email) {
+            return res.status(400).json({ message: "Email is required" });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -271,13 +305,18 @@ const ForgotPassword = async (req, res) => {
 const ResetPassword = async (req, res) => {
     try {
         const { email, otp, newPassword } = req.body;
-        const user = await User.findOne({ email });
+        if (!email || !otp || !newPassword) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
 
-        if (user.otp !== otp) {
+        if (user.otp !== String(otp).trim()) {
             return res.status(400).json({ message: "Invalid OTP" });
         }
 

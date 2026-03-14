@@ -23,7 +23,7 @@ const connectionOptions = {
   serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
 };
 
-mongoose.connect(process.env.MONGO_URI, connectionOptions)
+mongoose.connect(MONGO_URI, connectionOptions)
   .then(() => console.log("✅ Connected To Database"))
   .catch((err) => {
     console.error("❌ Database connection error:", err.message);
