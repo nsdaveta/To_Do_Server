@@ -76,10 +76,14 @@ const Register = async (req, res) => {
         try {
             await transporter.sendMail(mailOptions);
             console.log(`✅ Verification email sent to ${normalizedEmail}`);
+            res.status(201).json({ message: "Registration successful. Please check your email for the OTP." });
         } catch (mailError) {
             console.error("❌ Email sending error details:", mailError);
             return res.status(500).json({ 
-                message: "User created but failed to send verification email. Please ensure your email credentials are correct or try resending OTP.",
+                message: "User created but failed to send verification email. " + 
+                         (process.env.NODE_ENV === 'production' 
+                            ? "Please try resending OTP later." 
+                            : "Check your server terminal for the OTP if testing locally."),
                 email: normalizedEmail,
                 error: mailError.message
             });
@@ -170,7 +174,7 @@ const ResendOTP = async (req, res) => {
         try {
             await transporter.sendMail(mailOptions);
             console.log(`✅ OTP ${source === 'login' ? 'sent' : 'resent'} to ${normalizedEmail}`);
-            res.json({ message: "OTP sent successfully. Please check your email (or console during dev)." });
+            res.json({ message: "OTP sent successfully. Please check your email (or your server console if testing locally)." });
         } catch (mailError) {
             console.error("❌ Error sending email:", mailError);
             throw mailError; // Let the outer catch handle and format the error response
@@ -324,7 +328,12 @@ const ForgotPassword = async (req, res) => {
             res.json({ message: "Password reset OTP sent to your email." });
         } catch (mailError) {
             console.error("❌ Error sending forgot password email:", mailError);
-            res.status(500).json({ message: "Failed to send password reset email. Please try again later." });
+            res.status(500).json({ 
+                message: "Failed to send password reset email. " + 
+                         (process.env.NODE_ENV === 'production' 
+                            ? "Please try again later." 
+                            : "Check your server console if testing locally.")
+            });
         }
     } catch (error) {
         console.error("Forgot password error:", error);
