@@ -9,9 +9,11 @@ console.log("Checking Email Configuration...");
 if (!process.env.EMAIL_USER) console.error("❌ EMAIL_USER is missing!");
 if (!process.env.EMAIL_PASS) console.error("❌ EMAIL_PASS is missing!");
 
-// Configure Nodemailer with service: 'gmail' and explicit timeouts
+// Configure Nodemailer with IPv4 forcing and stable settings
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Use SSL
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").trim()
@@ -19,14 +21,14 @@ const transporter = nodemailer.createTransport({
     tls: {
         rejectUnauthorized: false
     },
-    connectionTimeout: 10000, // 10 seconds timeout
-    greetingTimeout: 10000,
-    logger: true,
-    debug: true
+    family: 4, // FORCE IPv4 to prevent Render connection hangs
+    connectionTimeout: 15000, // 15 seconds
+    debug: true,
+    logger: true
 });
 
 // Verify connection configuration immediately
-console.log("🚀 Starting Nodemailer verification...");
+console.log("🚀 Starting Nodemailer verification (Forcing IPv4)...");
 transporter.verify()
     .then(() => console.log("✅ Nodemailer: Server is ready to take our messages"))
     .catch((err) => {
