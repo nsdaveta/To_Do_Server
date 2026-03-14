@@ -7,21 +7,24 @@ const nodemailer = require('nodemailer');
 // Configure Nodemailer
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // true for 465, false for other ports
+    port: 587,
+    secure: false, // true for 465, false for other ports (587)
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
     },
     tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2'
     }
 });
 
 // Verify connection configuration
 transporter.verify((error, success) => {
     if (error) {
-        console.error("❌ Nodemailer verification failed:", error.message);
+        console.error("❌ Nodemailer verification failed. This usually means incorrect credentials or port issues.");
+        console.error("Error Code:", error.code);
+        console.error("Error Message:", error.message);
     } else {
         console.log("✅ Server is ready to take our messages");
     }
