@@ -4,31 +4,34 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
+// Debugging env vars (DO NOT LOG ACTUAL PASSWORD)
+console.log("Checking Email Configuration...");
+if (!process.env.EMAIL_USER) console.error("❌ EMAIL_USER is missing!");
+if (!process.env.EMAIL_PASS) console.error("❌ EMAIL_PASS is missing!");
+
 // Configure Nodemailer
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
-    secure: false, // true for 465, false for other ports (587)
+    secure: false, // TLS
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
     },
     tls: {
-        rejectUnauthorized: false,
-        minVersion: 'TLSv1.2'
+        rejectUnauthorized: false
     }
 });
 
-// Verify connection configuration
-transporter.verify((error, success) => {
-    if (error) {
-        console.error("❌ Nodemailer verification failed. This usually means incorrect credentials or port issues.");
-        console.error("Error Code:", error.code);
-        console.error("Error Message:", error.message);
-    } else {
-        console.log("✅ Server is ready to take our messages");
-    }
-});
+// Verify connection configuration immediately
+transporter.verify()
+    .then(() => console.log("✅ Nodemailer: Server is ready to take our messages"))
+    .catch((err) => {
+        console.error("❌ Nodemailer verification failed:");
+        console.error("Code:", err.code);
+        console.error("Response:", err.response);
+        console.error("Message:", err.message);
+    });
 
 const Register = async (req, res) => {
     try {
@@ -73,6 +76,7 @@ const Register = async (req, res) => {
 
         console.log(`[DEV ONLY] OTP for ${normalizedEmail}: ${otp}`);
 
+        console.log(`Attempting to send OTP email to: ${normalizedEmail}`);
         const mailOptions = {
             from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
             to: normalizedEmail,
