@@ -4,38 +4,29 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
-// Debugging env vars (DO NOT LOG ACTUAL PASSWORD)
+// Debugging env vars - check if they exist and their length
 console.log("Checking Email Configuration...");
-if (!process.env.EMAIL_USER) console.error("❌ EMAIL_USER is missing!");
-if (!process.env.EMAIL_PASS) console.error("❌ EMAIL_PASS is missing!");
+console.log(`EMAIL_USER defined: ${!!process.env.EMAIL_USER}, Length: ${process.env.EMAIL_USER?.length}`);
+console.log(`EMAIL_PASS defined: ${!!process.env.EMAIL_PASS}, Length: ${process.env.EMAIL_PASS?.length}`);
 
-// Configure Nodemailer with IPv4 forcing and stable settings
+// Configure Nodemailer for Port 587 (STARTTLS) - More reliable on cloud hosts
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Use SSL
+    port: 587,
+    secure: false, // STARTTLS requires secure: false
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").trim()
     },
     tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2'
     },
-    family: 4, // FORCE IPv4 to prevent Render connection hangs
-    connectionTimeout: 15000, // 15 seconds
-    debug: true,
-    logger: true
+    family: 4 // Stick to IPv4
 });
 
-// Verify connection configuration immediately
-console.log("🚀 Starting Nodemailer verification (Forcing IPv4)...");
-transporter.verify()
-    .then(() => console.log("✅ Nodemailer: Server is ready to take our messages"))
-    .catch((err) => {
-        console.error("❌ Nodemailer verification failed:");
-        console.error("Code:", err.code);
-        console.error("Message:", err.message);
-    });
+// We'll skip the top-level verify to prevent startup hangs and check during the first request
+console.log("🚀 Nodemailer initialized on Port 587. Verification will happen on first mail request.");
 
 const Register = async (req, res) => {
     try {
