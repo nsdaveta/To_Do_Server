@@ -9,35 +9,21 @@ console.log("Checking Email Configuration...");
 console.log(`EMAIL_USER defined: ${!!process.env.EMAIL_USER}, Length: ${process.env.EMAIL_USER?.length}`);
 console.log(`EMAIL_PASS defined: ${!!process.env.EMAIL_PASS}, Length: ${process.env.EMAIL_PASS?.length}`);
 
-// Configure Nodemailer for Port 465 (SMTPS) - Usually the most stable on Render
+// Configure Nodemailer using the 'service' shortcut - most resilient for Gmail
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Port 465 is always secure
+    service: 'gmail',
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").trim()
     },
+    connectionTimeout: 30000, 
+    greetingTimeout: 30000,
     tls: {
         rejectUnauthorized: false
-    },
-    family: 4,               // Force IPv4
-    connectionTimeout: 60000, // 60 seconds (Render can be slow)
-    greetingTimeout: 30000,
-    socketTimeout: 60000,
-    logger: true,            // Log full protocol
-    debug: true              // Show debug info
+    }
 });
 
-// Verification check
-console.log("🚀 Starting verification on Port 465...");
-transporter.verify()
-    .then(() => console.log("✅ Nodemailer: Connection Verified!"))
-    .catch((err) => {
-        console.error("❌ Nodemailer: Verification Failed");
-        console.error(`Error Code: ${err.code}`);
-        console.error(`Error Message: ${err.message}`);
-    });
+console.log("🚀 Nodemailer initialized with Service: Gmail. Ready to send.");
 
 const Register = async (req, res) => {
     try {
