@@ -6,10 +6,15 @@ const nodemailer = require('nodemailer');
 
 // Configure Nodemailer
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // Using 'service' is more reliable for Gmail
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // true for 465, false for other ports
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
+    },
+    tls: {
+        rejectUnauthorized: false
     }
 });
 
@@ -76,7 +81,7 @@ const Register = async (req, res) => {
         try {
             await transporter.sendMail(mailOptions);
             console.log(`✅ Verification email sent to ${normalizedEmail}`);
-            res.status(201).json({ message: "Registration successful. Please check your email for the OTP." });
+            return res.status(201).json({ message: "Registration successful. Please check your email for the OTP." });
         } catch (mailError) {
             console.error("❌ Email sending error details:", mailError);
             return res.status(500).json({ 
@@ -88,8 +93,6 @@ const Register = async (req, res) => {
                 error: mailError.message
             });
         }
-
-        res.status(201).json({ message: "Registration successful. Please verify your email." });
     } catch (error) {
         console.error("Error during registration:", error.message);
         // Handle MongoDB duplicate key error (e.g. username already taken)
@@ -325,10 +328,10 @@ const ForgotPassword = async (req, res) => {
         try {
             await transporter.sendMail(mailOptions);
             console.log(`✅ Password reset OTP sent to ${normalizedEmail}`);
-            res.json({ message: "Password reset OTP sent to your email." });
+            return res.json({ message: "Password reset OTP sent to your email." });
         } catch (mailError) {
             console.error("❌ Error sending forgot password email:", mailError);
-            res.status(500).json({ 
+            return res.status(500).json({ 
                 message: "Failed to send password reset email. " + 
                          (process.env.NODE_ENV === 'production' 
                             ? "Please try again later." 
