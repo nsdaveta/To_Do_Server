@@ -9,27 +9,29 @@ console.log("Checking Email Configuration...");
 if (!process.env.EMAIL_USER) console.error("❌ EMAIL_USER is missing!");
 if (!process.env.EMAIL_PASS) console.error("❌ EMAIL_PASS is missing!");
 
-// Configure Nodemailer
+// Configure Nodemailer with full debugging enabled
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // TLS
+    port: 465,
+    secure: true, // Port 465 requires secure: true
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
     },
     tls: {
         rejectUnauthorized: false
-    }
+    },
+    logger: true, // Output full logs to the console
+    debug: true   // Include debug information
 });
 
 // Verify connection configuration immediately
+console.log("🚀 Starting Nodemailer verification...");
 transporter.verify()
     .then(() => console.log("✅ Nodemailer: Server is ready to take our messages"))
     .catch((err) => {
         console.error("❌ Nodemailer verification failed:");
         console.error("Code:", err.code);
-        console.error("Response:", err.response);
         console.error("Message:", err.message);
     });
 
