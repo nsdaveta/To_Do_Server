@@ -9,24 +9,35 @@ console.log("Checking Email Configuration...");
 console.log(`EMAIL_USER defined: ${!!process.env.EMAIL_USER}, Length: ${process.env.EMAIL_USER?.length}`);
 console.log(`EMAIL_PASS defined: ${!!process.env.EMAIL_PASS}, Length: ${process.env.EMAIL_PASS?.length}`);
 
-// Configure Nodemailer for Port 587 (STARTTLS) - More reliable on cloud hosts
+// Configure Nodemailer for Port 465 (SMTPS) - Usually the most stable on Render
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // STARTTLS requires secure: false
+    port: 465,
+    secure: true, // Port 465 is always secure
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").trim()
     },
     tls: {
-        rejectUnauthorized: false,
-        minVersion: 'TLSv1.2'
+        rejectUnauthorized: false
     },
-    family: 4 // Stick to IPv4
+    family: 4,               // Force IPv4
+    connectionTimeout: 60000, // 60 seconds (Render can be slow)
+    greetingTimeout: 30000,
+    socketTimeout: 60000,
+    logger: true,            // Log full protocol
+    debug: true              // Show debug info
 });
 
-// We'll skip the top-level verify to prevent startup hangs and check during the first request
-console.log("🚀 Nodemailer initialized on Port 587. Verification will happen on first mail request.");
+// Verification check
+console.log("🚀 Starting verification on Port 465...");
+transporter.verify()
+    .then(() => console.log("✅ Nodemailer: Connection Verified!"))
+    .catch((err) => {
+        console.error("❌ Nodemailer: Verification Failed");
+        console.error(`Error Code: ${err.code}`);
+        console.error(`Error Message: ${err.message}`);
+    });
 
 const Register = async (req, res) => {
     try {
