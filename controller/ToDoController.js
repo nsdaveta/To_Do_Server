@@ -9,21 +9,23 @@ console.log("Checking Email Configuration...");
 console.log(`EMAIL_USER defined: ${!!process.env.EMAIL_USER}, Length: ${process.env.EMAIL_USER?.length}`);
 console.log(`EMAIL_PASS defined: ${!!process.env.EMAIL_PASS}, Length: ${process.env.EMAIL_PASS?.length}`);
 
-// Configure Nodemailer using the 'service' shortcut - most resilient for Gmail
+// Configure Nodemailer using the 'service' shortcut with FULL LOGGING
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").trim()
     },
-    connectionTimeout: 30000, 
-    greetingTimeout: 30000,
+    logger: true, // LOG EVERYTHING
+    debug: true,  // SHOW PROTOCOL
+    connectionTimeout: 40000, 
+    greetingTimeout: 40000,
     tls: {
         rejectUnauthorized: false
     }
 });
 
-console.log("🚀 Nodemailer initialized with Service: Gmail. Ready to send.");
+console.log("🚀 Nodemailer system online. Logging protocol enabled.");
 
 const Register = async (req, res) => {
     try {
@@ -78,18 +80,26 @@ const Register = async (req, res) => {
 
         // Await the email sending process to ensure it completes
         try {
-            await transporter.sendMail(mailOptions);
-            console.log(`✅ Verification email sent to ${normalizedEmail}`);
+            console.log(`📡 Sending mail via Nodemailer...`);
+            const info = await transporter.sendMail(mailOptions);
+            console.log(`✅ Mail sent successfully: ${info.messageId}`);
             return res.status(201).json({ message: "Registration successful. Please check your email for the OTP." });
         } catch (mailError) {
-            console.error("❌ Email sending error details:", mailError);
+            console.error("❌ NODEMAILER ERROR DETECTED:");
+            console.error("Error Name:", mailError.name);
+            console.error("Error Message:", mailError.message);
+            console.error("Error Code:", mailError.code);
+            console.error("Error ResponseCode:", mailError.responseCode);
+            console.error("Full Error Object:", JSON.stringify(mailError, null, 2));
+            
             return res.status(500).json({ 
                 message: "User created but failed to send verification email. " + 
                          (process.env.NODE_ENV === 'production' 
                             ? "Please try resending OTP later." 
                             : "Check your server terminal for the OTP if testing locally."),
                 email: normalizedEmail,
-                error: mailError.message
+                error: mailError.message,
+                errorCode: mailError.code
             });
         }
     } catch (error) {
@@ -174,11 +184,13 @@ const ResendOTP = async (req, res) => {
 
         // Await the email sending process to ensure it completes
         try {
-            await transporter.sendMail(mailOptions);
-            console.log(`✅ OTP ${source === 'login' ? 'sent' : 'resent'} to ${normalizedEmail}`);
+            console.log(`📡 Sending mail via Nodemailer...`);
+            const info = await transporter.sendMail(mailOptions);
+            console.log(`✅ Mail sent successfully: ${info.messageId}`);
             res.json({ message: "OTP sent successfully. Please check your email (or your server console if testing locally)." });
         } catch (mailError) {
             console.error("❌ Error sending email:", mailError);
+            console.error("Full Error details:", JSON.stringify(mailError, null, 2));
             throw mailError; // Let the outer catch handle and format the error response
         }
     } catch (error) {
