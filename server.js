@@ -30,6 +30,4 @@ mongoose.connect(MONGO_URI, connectionOptions)
     console.error("❌ Database connection error:", err.message);
   });
 
-app.listen(PORT() => {
-    console.log(`🚀 Server is listening on port${PORT}`);
-});
+app.listen("Server is listening on port "+process.env.PORT); 
