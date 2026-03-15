@@ -15,9 +15,8 @@ app.use(cors({
 
 app.use('/todos',TodoRouter)
 
-const PORT = process.env.PORT || 4000;
-const HOST = '0.0.0.0';
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/todos';
+const PORT = process.env.PORT
+const MONGO_URI = process.env.MONGO_URI
 
 const connectionOptions = {
   tls: true,
@@ -30,4 +29,7 @@ mongoose.connect(MONGO_URI, connectionOptions)
     console.error("❌ Database connection error:", err.message);
   });
 
-app.listen("Server is listening on port "+process.env.PORT); 
+app.listen(PORT, () => {
+    console.log("Server is listening on port " + PORT);
+});
+ 
