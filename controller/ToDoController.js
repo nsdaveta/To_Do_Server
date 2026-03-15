@@ -31,13 +31,13 @@ const Register = async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
+        if (!username || !email || !password) {
+            return res.status(400).json({ message: "All fields (username, email, password) are required." });
+        }
+
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
             console.error("Email credentials missing in .env file");
             return res.status(500).json({ message: "Server configuration error: Email credentials missing." });
-        }
-
-        if (!username || !email || !password) {
-            return res.status(400).json({ message: "All fields (username, email, password) are required." });
         }
 
         const normalizedEmail = email.toLowerCase().trim();
@@ -53,6 +53,11 @@ const Register = async (req, res) => {
                 return res.status(400).json({ message: "User already exists and is verified. Please log in." });
             }
             // If unverified, update the existing record with new details and a new OTP
+            // Check if the new username is already taken by a different user
+            const usernameTaken = await User.findOne({ username, _id: { $ne: existingUser._id } });
+            if (usernameTaken) {
+                return res.status(400).json({ message: "That username is already taken. Please choose a different one." });
+            }
             existingUser.username = username;
             existingUser.password = hashedPassword;
             existingUser.otp = otp;

@@ -17,7 +17,7 @@ const {
     CheckUserStatus
 } = require('../controller/ToDoController.js');
 
-// ToDo Routes (URL=> http://localhost:4000/todos/)
+// ToDo Routes (URL=> http://localhost:3000/todos/)
 ToDoRouter.get('/', auth, ToDo);
 ToDoRouter.post('/add', auth, Add_ToDo);
 ToDoRouter.put('/update/:id', auth, Update_ToDo);

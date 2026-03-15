@@ -31,5 +31,5 @@ mongoose.connect(MONGO_URI, connectionOptions)
   });
 
 app.listen(PORT, HOST, () => {
-    console.log(`🚀 Server is listening on http://${HOST}:${PORT}`);
+    console.log(`🚀 Server is listening   v on http://process.env.HOST:process.env.PORT`);
 });
