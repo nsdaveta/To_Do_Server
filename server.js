@@ -30,6 +30,6 @@ mongoose.connect(MONGO_URI, connectionOptions)
     console.error("❌ Database connection error:", err.message);
   });
 
-app.listen(PORT, HOST, () => {
-    console.log(`🚀 Server is listening   v on http://process.env.HOST:process.env.PORT`);
+app.listen(PORT() => {
+    console.log(`🚀 Server is listening on port${PORT}`);
 });
