@@ -27,6 +27,30 @@ const transporter = nodemailer.createTransport({
 
 console.log("🚀 Nodemailer system online. Logging protocol enabled.");
 
+// Professional HTML Template for OTP
+const generateOTPHtml = (otp, title = "Verification Code") => `
+<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px; background-color: #ffffff;">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="color: #4f46e5; margin: 0;">To-Do List App</h1>
+    </div>
+    <div style="padding: 20px; border-top: 2px solid #4f46e5;">
+        <h2 style="color: #333333; text-align: center;">${title}</h2>
+        <p style="color: #666666; font-size: 16px; line-height: 1.5; text-align: center;">
+            Thank you for using our app. Please use the following One-Time Password (OTP) to complete your action. This code is valid for a limited time.
+        </p>
+        <div style="background-color: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 30px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1f2937;">${otp}</span>
+        </div>
+        <p style="color: #9ca3af; font-size: 14px; text-align: center; margin-top: 20px;">
+            If you did not request this code, please ignore this email.
+        </p>
+    </div>
+    <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #9ca3af; font-size: 12px;">
+        &copy; ${new Date().getFullYear()} To-Do List App. All rights reserved.
+    </div>
+</div>
+`;
+
 const Register = async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -79,8 +103,8 @@ const Register = async (req, res) => {
         const mailOptions = {
             from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
             to: normalizedEmail,
-            subject: 'Verify your email',
-            text: `Your OTP for verification is: ${otp}`
+            subject: 'Verify your email - To-Do List App',
+            html: generateOTPHtml(otp, "Email Verification")
         };
 
         // Await the email sending process to ensure it completes
@@ -176,10 +200,8 @@ const ResendOTP = async (req, res) => {
         const mailOptions = {
             from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
             to: normalizedEmail,
-            subject: source === 'login' ? 'Verify your email' : 'Resent OTP - Verify your email',
-            text: source === 'login'
-                ? `Your OTP for verification is: ${otp}`
-                : `Your new OTP for verification is: ${otp}`
+            subject: source === 'login' ? 'Verify your email' : 'Resent OTP - To-Do List App',
+            html: generateOTPHtml(otp, source === 'login' ? "Verification Code" : "Your New OTP")
         };
 
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
@@ -337,8 +359,8 @@ const ForgotPassword = async (req, res) => {
         const mailOptions = {
             from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
             to: normalizedEmail,
-            subject: 'Password Reset OTP',
-            text: `Your OTP for password reset is: ${otp}`
+            subject: 'Password Reset OTP - To-Do List App',
+            html: generateOTPHtml(otp, "Password Reset")
         };
 
         try {
