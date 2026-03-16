@@ -25,7 +25,21 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-console.log("🚀 Nodemailer system online. Logging protocol enabled.");
+console.log("🚀 Nodemailer configuration loaded. Verifying connection...");
+
+// Verify connection configuration
+transporter.verify((error, success) => {
+    if (error) {
+        console.error("❌ Nodemailer connection failed:");
+        console.error("Error Code:", error.code);
+        console.error("Error Message:", error.message);
+        if (error.code === 'EAUTH') {
+            console.error("👉 TIP: This usually means your Google App Password is wrong or extra spaces were added.");
+        }
+    } else {
+        console.log("✅ Email Server is ready to send our OTPs!");
+    }
+});
 
 // Professional HTML Template for OTP
 const generateOTPHtml = (otp, title = "Verification Code") => `
