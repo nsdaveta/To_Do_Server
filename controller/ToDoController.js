@@ -9,17 +9,23 @@ console.log("Checking Email Configuration...");
 console.log(`EMAIL_USER defined: ${!!process.env.EMAIL_USER}, Length: ${process.env.EMAIL_USER?.length}`);
 console.log(`EMAIL_PASS defined: ${!!process.env.EMAIL_PASS}, Length: ${process.env.EMAIL_PASS?.length}`);
 
-// Configure Nodemailer using the 'service' shortcut with FULL LOGGING
+// Configure Nodemailer with explicit SMTP settings for better stability on Render
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Use SSL for Port 465
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").trim()
     },
-    logger: true, // LOG EVERYTHING
-    debug: true,  // SHOW PROTOCOL
-    connectionTimeout: 40000, 
-    greetingTimeout: 40000,
+    pool: true, // Use a pool to keep the connection alive
+    maxConnections: 1,
+    rateDelta: 20000,
+    rateLimit: 5,
+    logger: true,
+    debug: true,
+    connectionTimeout: 10000, 
+    greetingTimeout: 10000,
     tls: {
         rejectUnauthorized: false
     }
