@@ -79,7 +79,6 @@ const Register = async (req, res) => {
             return res.status(500).json({ message: "Server configuration error: Email credentials missing." });
         }
 
-        const normalizedEmail = email.toLowerCase().trim();
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
