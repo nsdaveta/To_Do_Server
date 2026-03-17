@@ -50,12 +50,28 @@ const generateOTPHtml = (otp, title = "Verification Code") => `
 </div>
 `;
 
+const dns = require('dns').promises;
+
 const Register = async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
         if (!username || !email || !password) {
             return res.status(400).json({ message: "All fields (username, email, password) are required." });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const domain = normalizedEmail.split('@')[1];
+
+        // 🔍 Verify if the email domain actually exists and has mail records
+        try {
+            const mxRecords = await dns.resolveMx(domain);
+            if (!mxRecords || mxRecords.length === 0) {
+                return res.status(400).json({ message: "The email domain does not appear to be valid or cannot receive emails." });
+            }
+        } catch (dnsError) {
+            console.error(`DNS lookup failed for ${domain}:`, dnsError.message);
+            return res.status(400).json({ message: "Invalid email domain. Please use a real email address." });
         }
 
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
