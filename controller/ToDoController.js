@@ -10,22 +10,19 @@ console.log(`EMAIL_USER defined: ${!!process.env.EMAIL_USER}, Length: ${process.
 console.log(`EMAIL_PASS defined: ${!!process.env.EMAIL_PASS}, Length: ${process.env.EMAIL_PASS?.length}`);
 
 // Configure Nodemailer with explicit SMTP settings for better stability on Render
+// Switched to Port 587 (STARTTLS) which is often more stable on cloud networks
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Use SSL for Port 465
+    port: 587,
+    secure: false, // Set to false for Port 587
     auth: {
         user: (process.env.EMAIL_USER || "").trim(),
         pass: (process.env.EMAIL_PASS || "").trim()
     },
-    pool: true, // Use a pool to keep the connection alive
-    maxConnections: 1,
-    rateDelta: 20000,
-    rateLimit: 5,
     logger: true,
     debug: true,
-    connectionTimeout: 10000, 
-    greetingTimeout: 10000,
+    connectionTimeout: 20000, // Increased timeout to 20s
+    greetingTimeout: 20000,
     tls: {
         rejectUnauthorized: false
     }
