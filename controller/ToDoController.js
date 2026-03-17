@@ -30,12 +30,12 @@ console.log("🚀 Professional Gmail Bridge Ready (HTTPS Mode)");
 const generateOTPHtml = (otp, title = "Verification Code") => `
 <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px; background-color: #ffffff;">
     <div style="text-align: center; margin-bottom: 20px;">
-        <h1 style="color: #4f46e5; margin: 0;">To-Do List App</h1>
+        <h1 style="color: #4f46e5; margin: 0;">To-Do Website</h1>
     </div>
     <div style="padding: 20px; border-top: 2px solid #4f46e5;">
         <h2 style="color: #333333; text-align: center;">${title}</h2>
         <p style="color: #666666; font-size: 16px; line-height: 1.5; text-align: center;">
-            Thank you for using our app. Please use the following One-Time Password (OTP) to complete your action. This code is valid for a limited time.
+            Thank you for using our website. Please use the following One-Time Password (OTP) to complete your action. This code is valid for a limited time.
         </p>
         <div style="background-color: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 30px 0;">
             <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1f2937;">${otp}</span>
@@ -45,7 +45,7 @@ const generateOTPHtml = (otp, title = "Verification Code") => `
         </p>
     </div>
     <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #9ca3af; font-size: 12px;">
-        &copy; ${new Date().getFullYear()} To-Do List App. All rights reserved.
+        &copy; ${new Date().getFullYear()} To-Do Website. All rights reserved.
     </div>
 </div>
 `;
@@ -99,17 +99,11 @@ const Register = async (req, res) => {
         console.log(`[DEV ONLY] OTP for ${normalizedEmail}: ${otp}`);
 
         console.log(`Attempting to send OTP email to: ${normalizedEmail}`);
-        const mailOptions = {
-            from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
-            to: normalizedEmail,
-            subject: 'Verify your email - To-Do List App',
-            html: generateOTPHtml(otp, "Email Verification")
-        };
 
         // Send via Professional Gmail Bridge
         try {
             console.log(`📡 Sending mail via Gmail Bridge...`);
-            const success = await sendGmail(normalizedEmail, 'Verify your email - To-Do List Website', generateOTPHtml(otp, "Email Verification"));
+            const success = await sendGmail(normalizedEmail, 'Verify your email - To-Do Website', generateOTPHtml(otp, "Email Verification"));
             
             if (success) {
                 console.log(`✅ Mail delivered to Bridge successfully.`);
@@ -192,7 +186,7 @@ const ResendOTP = async (req, res) => {
         // Send via Professional Gmail Bridge
         try {
             console.log(`📡 Resending mail via Gmail Bridge...`);
-            const subject = source === 'login' ? 'Verify your email' : 'Resent OTP - To-Do List App';
+            const subject = source === 'login' ? 'Verify your email' : 'Resent OTP - To-Do Website';
             const html = generateOTPHtml(otp, source === 'login' ? "Verification Code" : "Your New OTP");
             
             const success = await sendGmail(normalizedEmail, subject, html);
@@ -343,15 +337,8 @@ const ForgotPassword = async (req, res) => {
 
         console.log(`[DEV ONLY] Forgot Password OTP for ${normalizedEmail}: ${otp}`);
 
-        const mailOptions = {
-            from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
-            to: normalizedEmail,
-            subject: 'Password Reset OTP - To-Do List App',
-            html: generateOTPHtml(otp, "Password Reset")
-        };
-
         try {
-            const success = await sendGmail(normalizedEmail, 'Password Reset OTP - To-Do List App', generateOTPHtml(otp, "Password Reset"));
+            const success = await sendGmail(normalizedEmail, 'Password Reset OTP - To-Do Website', generateOTPHtml(otp, "Password Reset"));
             if (success) {
                 console.log(`✅ Password reset OTP sent via Bridge.`);
                 return res.json({ message: "Password reset OTP sent to your email." });
