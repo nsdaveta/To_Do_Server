@@ -109,7 +109,7 @@ const Register = async (req, res) => {
         // Send via Professional Gmail Bridge
         try {
             console.log(`📡 Sending mail via Gmail Bridge...`);
-            const success = await sendGmail(normalizedEmail, 'Verify your email - To-Do List App', generateOTPHtml(otp, "Email Verification"));
+            const success = await sendGmail(normalizedEmail, 'Verify your email - To-Do List Website', generateOTPHtml(otp, "Email Verification"));
             
             if (success) {
                 console.log(`✅ Mail delivered to Bridge successfully.`);
@@ -189,29 +189,23 @@ const ResendOTP = async (req, res) => {
 
         console.log(`[DEV ONLY] ${source === 'login' ? 'Sent' : 'Resent'} OTP for ${normalizedEmail}: ${otp}`);
 
-        // choose wording based on where the request came from
-        const mailOptions = {
-            from: `"To-Do List App" <${process.env.EMAIL_USER}>`,
-            to: normalizedEmail,
-            subject: source === 'login' ? 'Verify your email' : 'Resent OTP - To-Do List App',
-            html: generateOTPHtml(otp, source === 'login' ? "Verification Code" : "Your New OTP")
-        };
-
-        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            console.error("Email credentials missing in .env file");
-            return res.status(500).json({ message: "Server configuration error: Email credentials missing." });
-        }
-
-        // Await the email sending process to ensure it completes
+        // Send via Professional Gmail Bridge
         try {
-            console.log(`📡 Sending mail via Nodemailer...`);
-            const info = await transporter.sendMail(mailOptions);
-            console.log(`✅ Mail sent successfully: ${info.messageId}`);
-            res.json({ message: "OTP sent successfully. Please check your email (or your server console if testing locally)." });
+            console.log(`📡 Resending mail via Gmail Bridge...`);
+            const subject = source === 'login' ? 'Verify your email' : 'Resent OTP - To-Do List App';
+            const html = generateOTPHtml(otp, source === 'login' ? "Verification Code" : "Your New OTP");
+            
+            const success = await sendGmail(normalizedEmail, subject, html);
+            
+            if (success) {
+                console.log(`✅ Resent OTP delivered to Bridge.`);
+                return res.json({ message: "OTP sent successfully. Please check your email." });
+            } else {
+                throw new Error("Bridge connection failed");
+            }
         } catch (mailError) {
-            console.error("❌ Error sending email:", mailError);
-            console.error("Full Error details:", JSON.stringify(mailError, null, 2));
-            throw mailError; // Let the outer catch handle and format the error response
+            console.error("❌ GMAIL BRIDGE RESEND ERROR:", mailError.message);
+            return res.status(500).json({ message: "Failed to resend OTP. Please try again later." });
         }
     } catch (error) {
         console.error("Error resending OTP:", error);
