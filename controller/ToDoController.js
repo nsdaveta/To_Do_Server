@@ -2,39 +2,29 @@ const todos = require('../models/todomodel.js');
 const User = require('../models/userModel.js');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
-
-// Debugging env vars - check if they exist and their length
-console.log("Checking Email Configuration...");
-console.log(`EMAIL_USER defined: ${!!process.env.EMAIL_USER}, Length: ${process.env.EMAIL_USER?.length}`);
-console.log(`EMAIL_PASS defined: ${!!process.env.EMAIL_PASS}, Length: ${process.env.EMAIL_PASS?.length}`);
-
-// Configure Nodemailer using the standard 'gmail' service
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: (process.env.EMAIL_USER || "").trim(),
-        pass: (process.env.EMAIL_PASS || "").trim()
-    },
-    logger: true,
-    debug: true
-});
-
-console.log("🚀 Gmail system online. Verifying connection...");
-
-// Verify connection configuration
-transporter.verify((error, success) => {
-    if (error) {
-        console.error("❌ Gmail connection failed diagnostics:");
-        console.error("Code:", error.code);
-        console.error("Message:", error.message);
-        if (error.code === 'EAUTH') {
-            console.error("👉 TIP: This usually means your Google App Password is wrong or extra spaces were added.");
-        }
-    } else {
-        console.log("✅ Gmail SMTP is ready to deliver.");
+// 🚀 Gmail Bridge System - Bypasses Render's SMTP block using HTTPS
+const sendGmail = async (to, subject, html) => {
+    const bridgeUrl = process.env.GMAIL_BRIDGE_URL;
+    if (!bridgeUrl) {
+        console.error("❌ GMAIL_BRIDGE_URL missing in Environment Variables!");
+        return false;
     }
-});
+
+    try {
+        const response = await fetch(bridgeUrl, {
+            method: 'POST',
+            header: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to, subject, html })
+        });
+        const result = await response.text();
+        return result === "Success";
+    } catch (error) {
+        console.error("❌ Gmail Bridge Error:", error.message);
+        return false;
+    }
+};
+
+console.log("🚀 Professional Gmail Bridge Ready (HTTPS Mode)");
 
 // Professional HTML Template for OTP
 const generateOTPHtml = (otp, title = "Verification Code") => `
@@ -116,29 +106,22 @@ const Register = async (req, res) => {
             html: generateOTPHtml(otp, "Email Verification")
         };
 
-        // Await the email sending process to ensure it completes
+        // Send via Professional Gmail Bridge
         try {
-            console.log(`📡 Sending mail via Gmail...`);
-            const info = await transporter.sendMail(mailOptions);
-            console.log(`✅ Mail sent successfully: ${info.messageId}`);
-            return res.status(201).json({ message: "Registration successful. Please check your email for the OTP." });
-        } catch (mailError) {
-            console.error("❌ GMAIL SEND ERROR:");
-            console.error("Code:", mailError.code);
-            console.error("Message:", mailError.message);
+            console.log(`📡 Sending mail via Gmail Bridge...`);
+            const success = await sendGmail(normalizedEmail, 'Verify your email - To-Do List App', generateOTPHtml(otp, "Email Verification"));
             
-            let userMessage = "User created but failed to send verification email.";
-            if (mailError.code === 'ETIMEDOUT') {
-                userMessage += " The connection to Gmail timed out (Common on Render).";
-            } else if (mailError.code === 'EAUTH') {
-                userMessage += " Authentication failed. Check your App Password.";
+            if (success) {
+                console.log(`✅ Mail delivered to Bridge successfully.`);
+                return res.status(201).json({ message: "Registration successful. Please check your email for the OTP." });
+            } else {
+                throw new Error("Bridge connection failed");
             }
-
+        } catch (mailError) {
+            console.error("❌ GMAIL BRIDGE ERROR:");
             return res.status(500).json({ 
-                message: userMessage,
-                email: normalizedEmail,
-                error: mailError.message,
-                errorCode: mailError.code
+                message: "User created, but we couldn't send the email. Ensure GMAIL_BRIDGE_URL is set correctly in Render.",
+                otp_dev: otp // Providing OTP in response temporarily for easier testing
             });
         }
     } catch (error) {
@@ -374,18 +357,16 @@ const ForgotPassword = async (req, res) => {
         };
 
         try {
-            await transporter.sendMail(mailOptions);
-            console.log(`✅ Password reset OTP sent to ${normalizedEmail} via Gmail`);
-            return res.json({ message: "Password reset OTP sent to your email." });
+            const success = await sendGmail(normalizedEmail, 'Password Reset OTP - To-Do List App', generateOTPHtml(otp, "Password Reset"));
+            if (success) {
+                console.log(`✅ Password reset OTP sent via Bridge.`);
+                return res.json({ message: "Password reset OTP sent to your email." });
+            } else {
+                throw new Error("Bridge failure");
+            }
         } catch (mailError) {
-            console.error("❌ Forgot Password Email Error:", mailError.message || mailError);
-            let msg = "Failed to send password reset email.";
-            if (mailError.code === 'ETIMEDOUT') msg += " Connection timed out on Render.";
-            
-            return res.status(500).json({ 
-                message: msg,
-                dev_note: process.env.NODE_ENV === 'production' ? null : "Check server console."
-            });
+            console.error("❌ Forgot Password Bridge Error:", mailError.message);
+            return res.status(500).json({ message: "Failed to send reset email. Try again later." });
         }
     } catch (error) {
         console.error("Forgot password error:", error);
