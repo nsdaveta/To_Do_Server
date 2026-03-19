@@ -67,11 +67,11 @@ const Register = async (req, res) => {
         try {
             const mxRecords = await dns.resolveMx(domain);
             if (!mxRecords || mxRecords.length === 0) {
-                return res.status(400).json({ message: "The email domain does not appear to be valid or cannot receive emails." });
+                return res.status(400).json({ message: "Invalid email entered, please provide an actual email id" });
             }
         } catch (dnsError) {
             console.error(`DNS lookup failed for ${domain}:`, dnsError.message);
-            return res.status(400).json({ message: "Invalid email domain. Please use a real email address." });
+            return res.status(400).json({ message: "Invalid email entered, please provide an actual email id" });
         }
 
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
@@ -141,6 +141,28 @@ const Register = async (req, res) => {
             return res.status(400).json({ message: `That ${field} is already taken. Please choose a different one.` });
         }
         res.status(500).json({ message: error.message || "An internal server error occurred during registration." });
+    }
+};
+
+const ValidateEmailDomain = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ valid: false });
+        }
+
+        const domain = email.split('@')[1];
+        if (!domain) {
+            return res.json({ valid: false });
+        }
+
+        const mxRecords = await dns.resolveMx(domain);
+        if (mxRecords && mxRecords.length > 0) {
+            return res.json({ valid: true });
+        }
+        res.json({ valid: false });
+    } catch (error) {
+        res.json({ valid: false });
     }
 };
 
@@ -408,4 +430,4 @@ const ResetPassword = async (req, res) => {
 
 
 
-module.exports={ToDo,Add_ToDo,Update_ToDo,Delete_ToDo, Register, VerifyOTP, ResendOTP, Login, Logout, ForgotPassword, ResetPassword, CheckUserStatus}
+module.exports={ToDo,Add_ToDo,Update_ToDo,Delete_ToDo, Register, VerifyOTP, ResendOTP, Login, Logout, ForgotPassword, ResetPassword, CheckUserStatus, ValidateEmailDomain}

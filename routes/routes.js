@@ -14,7 +14,8 @@ const {
     ResendOTP,
     ForgotPassword,
     ResetPassword,
-    CheckUserStatus
+    CheckUserStatus,
+    ValidateEmailDomain
 } = require('../controller/ToDoController.js');
 
 const {
@@ -31,6 +32,7 @@ ToDoRouter.delete('/delete/:id', auth, Delete_ToDo);
 
 // Auth Routes
 ToDoRouter.post('/register', registerValidation, Register);
+ToDoRouter.post('/validate-email-domain', ValidateEmailDomain);
 ToDoRouter.post('/verify-otp', VerifyOTP);
 // `source` field in body (e.g. 'login') controls email wording; login flow uses normal registration-style message
 ToDoRouter.post('/resend-otp', ResendOTP);
