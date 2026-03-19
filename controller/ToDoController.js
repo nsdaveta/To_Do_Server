@@ -83,59 +83,71 @@ const Register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        let user;
+        // Check for existing users (verified or unverified)
         const existingUser = await User.findOne({ email: normalizedEmail });
         
         if (existingUser) {
             if (existingUser.isVerified) {
                 return res.status(400).json({ message: "User already exists and is verified. Please log in." });
             }
-            // If unverified, update the existing record with new details and a new OTP
-            // Check if the new username is already taken by a different user
+            // If unverified, check if the desired new username is already taken by others
             const usernameTaken = await User.findOne({ username, _id: { $ne: existingUser._id } });
             if (usernameTaken) {
                 return res.status(400).json({ message: "That username is already taken. Please choose a different one." });
             }
-            existingUser.username = username;
-            existingUser.password = hashedPassword;
-            existingUser.otp = otp;
-            user = await existingUser.save();
         } else {
-            user = new User({
-                username,
-                email: normalizedEmail,
-                password: hashedPassword,
-                otp,
-                isVerified: false
-            });
-            await user.save();
+            // New user case: check if the username is taken by anyone else
+            const usernameTaken = await User.findOne({ username });
+            if (usernameTaken) {
+                return res.status(400).json({ message: "That username is already taken. Please choose a different one." });
+            }
         }
 
         console.log(`[DEV ONLY] OTP for ${normalizedEmail}: ${otp}`);
-
         console.log(`Attempting to send OTP email to: ${normalizedEmail}`);
 
-        // Send via Professional Gmail Bridge
+        // Try to send the email FIRST before saving any changes to the database
         try {
             console.log(`📡 Sending mail via Gmail Bridge...`);
             const success = await sendGmail(normalizedEmail, 'Verify your email - To-Do Website', generateOTPHtml(otp, "Email Verification"));
             
             if (success) {
-                console.log(`✅ Mail delivered to Bridge successfully.`);
+                console.log(`✅ Mail delivered to Bridge successfully. Proceeding to save user.`);
+
+                // ONLY SAVE TO DB IF EMAIL SEND WAS SUCCESSFUL
+                if (existingUser) {
+                    // Update existing unverified user
+                    existingUser.username = username;
+                    existingUser.password = hashedPassword;
+                    existingUser.otp = otp;
+                    await existingUser.save();
+                } else {
+                    // Create new user
+                    const newUser = new User({
+                        username,
+                        email: normalizedEmail,
+                        password: hashedPassword,
+                        otp,
+                        isVerified: false
+                    });
+                    await newUser.save();
+                }
+
                 return res.status(201).json({ message: "Registration successful. Please check your email for the OTP." });
             } else {
-                throw new Error("Bridge connection failed");
+                return res.status(500).json({ 
+                    message: "Failed to send verification email. Please try again later or check your email domain." 
+                });
             }
         } catch (mailError) {
-            console.error("❌ GMAIL BRIDGE ERROR:");
+            console.error("❌ GMAIL BRIDGE ERROR:", mailError.message);
             return res.status(500).json({ 
-                message: "User created, but we couldn't send the email. Ensure GMAIL_BRIDGE_URL is set correctly in Render.",
-                otp_dev: otp // Providing OTP in response temporarily for easier testing
+                message: "A network error occurred while sending the email. Nothing has been saved in our database." 
             });
         }
     } catch (error) {
         console.error("Error during registration:", error.message);
-        // Handle MongoDB duplicate key error (e.g. username already taken)
+        // Handle MongoDB duplicate key error (fallback)
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern || error.keyValue || {})[0] || 'field';
             return res.status(400).json({ message: `That ${field} is already taken. Please choose a different one.` });
