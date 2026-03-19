@@ -120,6 +120,8 @@ const Register = async (req, res) => {
                     existingUser.username = username;
                     existingUser.password = hashedPassword;
                     existingUser.otp = otp;
+                    // Reset the 24-hour timer so they get a fresh window
+                    existingUser.createdAt = Date.now();
                     await existingUser.save();
                 } else {
                     // Create new user
