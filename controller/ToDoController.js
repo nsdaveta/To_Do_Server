@@ -337,9 +337,6 @@ const Add_ToDo=async(req,res)=>
 {
     try {
         const {title}=req.body
-        if (!title) {
-            return res.status(400).json({ message: "Title is required" });
-        }
         const Added_ToDo=await todos.create({title, user_id: req.user})
         res.status(201).json(Added_ToDo);
     } catch (error) {
