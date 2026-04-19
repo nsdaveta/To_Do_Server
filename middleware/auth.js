@@ -15,7 +15,7 @@ const auth = (req, res, next) => {
         req.user = verified.id;
         next();
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(401).json({ message: "Invalid or expired token", error: err.message });
     }
 };
 

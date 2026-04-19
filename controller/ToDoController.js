@@ -328,19 +328,22 @@ const ToDo=async(req,res)=>
 {
     try {
         const todoList= await todos.find({ user_id: req.user });
-        res.send(todoList);
+        res.json(todoList);
     } catch (error) {
-        res.status(500).send(error.message);
+        res.status(500).json({ message: error.message });
     }
 }
 const Add_ToDo=async(req,res)=>
 {
     try {
         const {title}=req.body
+        if (!title) {
+            return res.status(400).json({ message: "Title is required" });
+        }
         const Added_ToDo=await todos.create({title, user_id: req.user})
-        res.send(Added_ToDo);
+        res.status(201).json(Added_ToDo);
     } catch (error) {
-        res.status(500).send(error.message);
+        res.status(500).json({ message: error.message });
     }
 
 }
@@ -350,9 +353,12 @@ const Update_ToDo=async(req,res)=>
         const data=req.body;
         const id=req.params.id;
         const Updated_ToDo=await todos.findOneAndUpdate({ _id: id, user_id: req.user },data,{new:true})
-        res.send(Updated_ToDo);
+        if (!Updated_ToDo) {
+            return res.status(404).json({ message: "Task not found" });
+        }
+        res.json(Updated_ToDo);
     } catch (error) {
-        res.status(500).send(error.message);
+        res.status(500).json({ message: error.message });
     }
 }
 
@@ -362,9 +368,12 @@ const Delete_ToDo=async (req,res)=>
     try {
         const id=req.params.id;
         const Deleted_ToDo=await todos.findOneAndDelete({ _id: id, user_id: req.user });
-        res.send(Deleted_ToDo)
+        if (!Deleted_ToDo) {
+            return res.status(404).json({ message: "Task not found" });
+        }
+        res.json(Deleted_ToDo)
     } catch (error) {
-        res.status(500).send(error.message);
+        res.status(500).json({ message: error.message });
     } 
 }
 
