@@ -15,19 +15,25 @@ app.use(cors({
 
 app.use('/todos',TodoRouter)
 
-const PORT = process.env.PORT
-const MONGO_URI = process.env.MONGO_URI
+const PORT = process.env.PORT || 3000;
+const MONGO_URI = process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+  console.error("❌ MONGO_URI is not defined in environment variables! Database connection will fail.");
+}
 
 const connectionOptions = {
   tls: true,
   serverSelectionTimeoutMS: 5000,
 };
 
-mongoose.connect(MONGO_URI, connectionOptions)
-  .then(() => console.log("✅ Connected To Database"))
-  .catch((err) => {
-    console.error("❌ Database connection error:", err.message);
-  });
+if (MONGO_URI) {
+  mongoose.connect(MONGO_URI, connectionOptions)
+    .then(() => console.log("✅ Connected To Database"))
+    .catch((err) => {
+      console.error("❌ Database connection error:", err.message);
+    });
+}
 
 app.listen(PORT, () => {
     console.log(`🚀 Server is listening on port ${PORT}`);
